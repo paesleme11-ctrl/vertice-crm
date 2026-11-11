@@ -16,14 +16,17 @@ service cloud.firestore {
         && request.auth.token.firebase.sign_in_second_factor is string
         && request.auth.token.firebase.sign_in_second_factor.size() > 0;
     }
+    function validBrand(brand) {
+      return brand is map
+        && brand.keys().hasOnly(['primaryColor', 'logoUrl'])
+        && (!('primaryColor' in brand) || (brand.primaryColor is string && brand.primaryColor.matches('^#[0-9A-Fa-f]{6}$')))
+        && (!('logoUrl' in brand) || (brand.logoUrl is string && brand.logoUrl.size() <= 2048 && brand.logoUrl.matches('^https://')));
+    }
     function validPublicBrand(data) {
       return data.keys().hasOnly(['displayName', 'brand'])
         && data.keys().hasAll(['displayName'])
         && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 120
-        && (!('brand' in data) || (data.brand is map
-          && data.brand.keys().hasOnly(['primaryColor', 'logoUrl'])
-          && (!('primaryColor' in data.brand) || (data.brand.primaryColor is string && data.brand.primaryColor.matches('^#[0-9A-Fa-f]{6}$')))
-          && (!('logoUrl' in data.brand) || (data.brand.logoUrl is string && data.brand.logoUrl.size() <= 2048 && data.brand.logoUrl.matches('^https://'))));
+        && (!('brand' in data) || validBrand(data.brand));
     }
     function validClient(data) {
       return data.keys().hasOnly([
