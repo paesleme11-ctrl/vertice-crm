@@ -13,6 +13,20 @@ service cloud.firestore {
     function adminOnly() {
       return signedIn() && request.auth.uid == 'EzMhP4jlu2apWPdmwSgmmHFZkA73';
     }
+    function validAccount(data) {
+      return data.keys().hasAll(['nome', 'status', 'plano', 'validadeAte', 'slug'])
+        && data.nome is string && data.nome.size() > 0 && data.nome.size() <= 120
+        && data.status in ['ativo', 'pausado', 'suspenso']
+        && data.plano is string && data.plano.size() > 0 && data.plano.size() <= 40
+        && data.validadeAte is timestamp
+        && data.slug is string && data.slug.size() >= 3 && data.slug.size() <= 40
+        && data.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && (!('criadoEm' in data) || data.criadoEm is timestamp)
+        && (!('atualizadoEm' in data) || data.atualizadoEm is timestamp)
+        && (!('pausadoEm' in data) || data.pausadoEm is timestamp)
+        && (!('valor' in data) || (data.valor is number && data.valor >= 0 && data.valor <= 10000000))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 254));
+    }
     function validBrand(brand) {
       return brand is map
         && brand.keys().hasOnly(['primaryColor', 'logoUrl'])
@@ -56,13 +70,15 @@ service cloud.firestore {
     match /accounts/{uid} {
       allow get: if (owns(uid) && accountActive(uid)) || adminOnly();
       allow list: if adminOnly();
-      allow create, update, delete: if false;
+      allow create, update: if adminOnly() && validAccount(request.resource.data);
+      allow delete: if false;
     }
     match /slugs/{slug} {
-      allow get: if validPublicBrand(resource.data)
+      allow get: if adminOnly() || (validPublicBrand(resource.data)
         && (!signedIn() || (accountActive(request.auth.uid)
-          && get(accountPath(request.auth.uid)).data.slug == slug));
-      allow list, create, update, delete: if false;
+          && get(accountPath(request.auth.uid)).data.slug == slug)));
+      allow create, update: if adminOnly() && validPublicBrand(request.resource.data);
+      allow list, delete: if false;
     }
     match /auditLog/{eventId} {
       allow get, list: if adminOnly();
