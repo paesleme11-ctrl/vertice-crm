@@ -1,0 +1,17 @@
+{
+  "indexes": [
+    { "collectionGroup": "clients", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "proximoFollowUp", "order": "ASCENDING" }, { "fieldPath": "dataEntrada", "order": "DESCENDING" }
+    ] },
+    { "collectionGroup": "clients", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "etapaId", "order": "ASCENDING" }, { "fieldPath": "dataEntrada", "order": "DESCENDING" }
+    ] },
+    { "collectionGroup": "clients", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "estrelas", "order": "DESCENDING" }, { "fieldPath": "dataEntrada", "order": "DESCENDING" }
+    ] },
+    { "collectionGroup": "interactions", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "clientId", "order": "ASCENDING" }, { "fieldPath": "data", "order": "DESCENDING" }
+    ] }
+  ],
+  "fieldOverrides": []
+}

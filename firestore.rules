@@ -1,0 +1,102 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function owns(uid) { return signedIn() && request.auth.uid == uid; }
+    function accountPath(uid) { return /databases/$(database)/documents/accounts/$(uid); }
+    function accountActive(uid) {
+      return exists(accountPath(uid))
+        && get(accountPath(uid)).data.status == 'ativo'
+        && get(accountPath(uid)).data.validadeAte is timestamp
+        && get(accountPath(uid)).data.validadeAte > request.time;
+    }
+    function adminMfa() {
+      return signedIn()
+        && request.auth.token.admin == true
+        && request.auth.token.firebase.sign_in_second_factor is string
+        && request.auth.token.firebase.sign_in_second_factor.size() > 0;
+    }
+    function validPublicBrand(data) {
+      return data.keys().hasOnly(['displayName', 'brand'])
+        && data.keys().hasAll(['displayName'])
+        && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 120
+        && (!('brand' in data) || (data.brand is map
+          && data.brand.keys().hasOnly(['primaryColor', 'logoUrl'])
+          && (!('primaryColor' in data.brand) || (data.brand.primaryColor is string && data.brand.primaryColor.matches('^#[0-9A-Fa-f]{6}$')))
+          && (!('logoUrl' in data.brand) || (data.brand.logoUrl is string && data.brand.logoUrl.size() <= 2048 && data.brand.logoUrl.matches('^https://'))));
+    }
+    function validClient(data) {
+      return data.keys().hasOnly([
+        'nome', 'whatsapp', 'origem', 'dataEntrada', 'etapaId', 'estrelas',
+        'observacao', 'valorVenda', 'proximoFollowUp', 'criadoEm', 'atualizadoEm'
+      ])
+      && data.keys().hasAll(['nome', 'origem', 'dataEntrada', 'etapaId', 'estrelas'])
+      && data.nome is string && data.nome.size() > 0 && data.nome.size() <= 120
+      && data.origem is string && data.origem in ['Instagram', 'Indicação', 'Anúncio', 'Outro']
+      && data.dataEntrada is string && data.dataEntrada.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+      && data.etapaId is string && data.etapaId.size() <= 80
+      && data.estrelas is int && data.estrelas >= 1 && data.estrelas <= 5
+      && (!('whatsapp' in data) || (data.whatsapp is string && data.whatsapp.size() <= 30))
+      && (!('observacao' in data) || (data.observacao is string && data.observacao.size() <= 4000))
+      && (!('valorVenda' in data) || (data.valorVenda is number && data.valorVenda >= 0))
+      && (!('proximoFollowUp' in data) || (data.proximoFollowUp is string && data.proximoFollowUp.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+      && (!('criadoEm' in data) || data.criadoEm is timestamp)
+      && (!('atualizadoEm' in data) || data.atualizadoEm is timestamp);
+    }
+    function validInteraction(data) {
+      return data.keys().hasOnly(['tipo', 'nota', 'data', 'criadoEm', 'clientId'])
+        && data.keys().hasAll(['tipo', 'data', 'criadoEm', 'clientId'])
+        && data.tipo is string && data.tipo.size() <= 40
+        && data.data is string && data.data.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.criadoEm is timestamp
+        && data.clientId is string && data.clientId.size() <= 128
+        && (!('nota' in data) || (data.nota is string && data.nota.size() <= 4000));
+    }
+
+    match /accounts/{uid} {
+      allow get: if owns(uid) && accountActive(uid);
+      allow list, create, update, delete: if false;
+    }
+    match /slugs/{slug} {
+      allow get: if validPublicBrand(resource.data)
+        && (!signedIn() || (accountActive(request.auth.uid)
+          && get(accountPath(request.auth.uid)).data.slug == slug));
+      allow list, create, update, delete: if false;
+    }
+    match /auditLog/{eventId} {
+      allow get, list: if adminMfa();
+      allow create, update, delete: if false;
+    }
+    match /users/{uid}/clients/{clientId} {
+      allow get, list: if owns(uid) && accountActive(uid);
+      allow create, update: if owns(uid) && accountActive(uid) && validClient(request.resource.data);
+      allow delete: if owns(uid) && accountActive(uid);
+      match /{nested=**} {
+        allow read, write: if owns(uid) && accountActive(uid);
+      }
+    }
+    match /users/{uid}/interactions/{interactionId} {
+      allow get, list: if owns(uid) && accountActive(uid);
+      allow create, update: if owns(uid) && accountActive(uid) && validInteraction(request.resource.data);
+      allow delete: if owns(uid) && accountActive(uid);
+    }
+    match /users/{uid}/settings/{settingId} {
+      allow get, list: if owns(uid) && accountActive(uid);
+      allow create, update: if owns(uid) && accountActive(uid)
+        && request.resource.data.keys().hasOnly(['etapas', 'preferencias', 'atualizadoEm'])
+        && request.resource.data.size() <= 3
+        && (!('etapas' in request.resource.data) || (request.resource.data.etapas is list && request.resource.data.etapas.size() <= 30))
+        && (!('preferencias' in request.resource.data) || (request.resource.data.preferencias is map
+          && request.resource.data.preferencias.keys().hasOnly(['tema', 'visao'])
+          && (!('tema' in request.resource.data.preferencias) || request.resource.data.preferencias.tema in ['claro', 'escuro', 'sistema'])
+          && (!('visao' in request.resource.data.preferencias) || request.resource.data.preferencias.visao in ['kanban', 'lista'])))
+        && (!('atualizadoEm' in request.resource.data) || request.resource.data.atualizadoEm is timestamp);
+      allow delete: if owns(uid) && accountActive(uid);
+    }
+    match /users/{uid}/aggregates/{aggregateId} {
+      allow get, list: if owns(uid) && accountActive(uid);
+      allow write: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
