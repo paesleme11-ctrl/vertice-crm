@@ -5,22 +5,16 @@ Aplicação estática publicada no GitHub Pages e conectada ao Firebase Authenti
 ## Páginas
 
 - `cliente.html?c=slug-do-cliente`: entrada do cliente. Cada empresa pode receber seu slug próprio em `accounts/{uid}.slug`; o slug identifica a URL, mas não autentica ninguém.
-- `admin.html`: painel administrativo de consulta, protegido pelo UID allowlisted nas regras e por MFA TOTP.
+- `admin.html`: painel administrativo de consulta, protegido pelo UID allowlisted nas regras (login com e-mail e senha, sem segundo fator).
 - `index.html`: encaminha para `cliente.html`.
 
 ## Allowlist do administrador
 
-O único UID autorizado no painel de consulta é `EzMhP4jlu2apWPdmwSgmmHFZkA73`. A restrição está tanto no front-end quanto nas Firestore Rules, junto com a exigência de MFA TOTP. O UID pode aparecer no código e nas regras públicas; ele não é senha nem segredo e, sozinho, não autentica uma sessão.
+O único UID autorizado no painel de consulta é `EzMhP4jlu2apWPdmwSgmmHFZkA73`. A restrição está tanto no front-end quanto nas Firestore Rules. O UID pode aparecer no código e nas regras públicas; ele não é senha nem segredo e, sozinho, não autentica uma sessão.
 
 Não é necessário usar Node.js, Admin SDK ou custom claim `admin=true` para este administrador único. Para trocar o administrador, substitua o UID em `app.js` e em `firestore.rules` e publique ambos os arquivos. Não abra permissões de escrita para contas.
 
 O painel permite consultar somente metadados de `accounts` (nome, status, plano, validade e slug), com páginas de 50 itens e contagem agregada. Não lê `users/{uid}/clients` nem `interactions`, e não oferece ações para alterar ou excluir contas.
-
-## MFA do administrador
-
-O login administrativo exige um segundo fator TOTP. Acesse `admin.html` com o usuário Firebase cujo UID está na allowlist. A tela inicia o cadastro do autenticador se ele ainda não tiver MFA e valida o código nos acessos seguintes. Confirme o e-mail do usuário antes do cadastro.
-
-Para ativar TOTP, habilite Firebase Authentication with Identity Platform e TOTP MFA no projeto. A documentação oficial descreve essa exigência para MFA/TOTP: https://firebase.google.com/docs/auth/web/totp-mfa. O projeto pode permanecer no Spark; Identity Platform no plano sem custo tem limite publicado de 3.000 usuários ativos por dia para a maioria dos provedores. Este app usa TOTP, sem SMS.
 
 ## Isolamento dos clientes
 

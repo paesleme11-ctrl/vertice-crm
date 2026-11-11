@@ -10,11 +10,8 @@ service cloud.firestore {
         && get(accountPath(uid)).data.validadeAte is timestamp
         && get(accountPath(uid)).data.validadeAte > request.time;
     }
-    function adminMfa() {
-      return signedIn()
-        && request.auth.uid == 'EzMhP4jlu2apWPdmwSgmmHFZkA73'
-        && request.auth.token.firebase.sign_in_second_factor is string
-        && request.auth.token.firebase.sign_in_second_factor.size() > 0;
+    function adminOnly() {
+      return signedIn() && request.auth.uid == 'EzMhP4jlu2apWPdmwSgmmHFZkA73';
     }
     function validBrand(brand) {
       return brand is map
@@ -57,8 +54,8 @@ service cloud.firestore {
     }
 
     match /accounts/{uid} {
-      allow get: if (owns(uid) && accountActive(uid)) || adminMfa();
-      allow list: if adminMfa();
+      allow get: if (owns(uid) && accountActive(uid)) || adminOnly();
+      allow list: if adminOnly();
       allow create, update, delete: if false;
     }
     match /slugs/{slug} {
@@ -68,7 +65,7 @@ service cloud.firestore {
       allow list, create, update, delete: if false;
     }
     match /auditLog/{eventId} {
-      allow get, list: if adminMfa();
+      allow get, list: if adminOnly();
       allow create, update, delete: if false;
     }
     match /users/{uid}/clients/{clientId} {
