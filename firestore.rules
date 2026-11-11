@@ -12,7 +12,7 @@ service cloud.firestore {
     }
     function adminMfa() {
       return signedIn()
-        && request.auth.token.admin == true
+        && request.auth.uid == 'EzMhP4jlu2apWPdmwSgmmHFZkA73'
         && request.auth.token.firebase.sign_in_second_factor is string
         && request.auth.token.firebase.sign_in_second_factor.size() > 0;
     }
