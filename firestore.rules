@@ -57,8 +57,9 @@ service cloud.firestore {
     }
 
     match /accounts/{uid} {
-      allow get: if owns(uid) && accountActive(uid);
-      allow list, create, update, delete: if false;
+      allow get: if (owns(uid) && accountActive(uid)) || adminMfa();
+      allow list: if adminMfa();
+      allow create, update, delete: if false;
     }
     match /slugs/{slug} {
       allow get: if validPublicBrand(resource.data)
