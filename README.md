@@ -12,9 +12,9 @@ Aplicação estática publicada no GitHub Pages e conectada ao Firebase Authenti
 
 O único UID autorizado no painel de consulta é `EzMhP4jlu2apWPdmwSgmmHFZkA73`. A restrição está tanto no front-end quanto nas Firestore Rules. O UID pode aparecer no código e nas regras públicas; ele não é senha nem segredo e, sozinho, não autentica uma sessão.
 
-Não é necessário usar Node.js, Admin SDK ou custom claim `admin=true` para este administrador único. Para trocar o administrador, substitua o UID em `app.js` e em `firestore.rules` e publique ambos os arquivos. Não abra permissões de escrita para contas.
+Não é necessário usar Node.js, Admin SDK ou custom claim `admin=true` para este administrador único. Para trocar o administrador, substitua o UID em `app.js` e em `firestore.rules` e publique ambos os arquivos. As Rules liberam somente `create`/`update` de `accounts` e `slugs` para o UID do admin, com validação de campos; `delete` segue bloqueado.
 
-O painel permite consultar somente metadados de `accounts` (nome, status, plano, validade e slug), com páginas de 50 itens e contagem agregada. Não lê `users/{uid}/clients` nem `interactions`, e não oferece ações para alterar ou excluir contas.
+O painel lista metadados de `accounts` (nome, status, plano, validade e slug), com páginas de 50 itens e contagem agregada, e permite **criar clientes novos**: cria o usuário no Firebase Authentication (por uma instância secundária do app, sem trocar a sessão do admin) e grava `accounts/{uid}` e `slugs/{slug}`. Não lê `users/{uid}/clients` nem `interactions` e não altera nem exclui contas existentes.
 
 ## Isolamento dos clientes
 
@@ -24,7 +24,7 @@ O Firebase Auth fornece o UID autenticado. O cliente sempre lê e grava em `user
 
 ## Operações manuais enquanto o projeto fica no Spark
 
-Cloud Functions não estão implantadas. Portanto, não há provisionamento de clientes, bloqueio server-side de cadastro via `beforeUserCreated`, link de primeiro acesso pelo Admin SDK, suspensão com `revokeRefreshTokens`, exclusão recursiva ou auditoria administrativa. Faça essas operações manualmente pelo Firebase Console em ambiente confiável. O HTML público nunca recebe credencial administrativa.
+Cloud Functions não estão implantadas. Portanto, não há bloqueio server-side de cadastro via `beforeUserCreated`, link de primeiro acesso pelo Admin SDK, suspensão com `revokeRefreshTokens`, exclusão recursiva ou auditoria administrativa. Faça essas operações manualmente pelo Firebase Console em ambiente confiável. O HTML público nunca recebe credencial administrativa.
 
 A tela de login não oferece cadastro. Sem blocking function, isso não impede chamadas diretas para criar usuário no Firebase Auth; porém, contas sem `accounts/{uid}` ativo não passam pelas regras nem acessam os dados do CRM.
 
